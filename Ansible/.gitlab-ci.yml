@@ -1,0 +1,42 @@
+image: ansible/ansible:latest
+
+stages:
+  - provision
+  - configure
+  - capture-image
+
+variables:
+  AZURE_REGION: "eastus"
+  RESOURCE_GROUP: $RESOURCE_GROUP
+  VM_NAME: $VM_NAME
+  IMAGE_NAME: $IMAGE_NAME
+
+provision:
+  stage: provision
+  script:
+    - echo "Logging in to Azure"
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az account set --subscription $AZURE_SUBSCRIPTION_ID
+
+    - echo "Creating Windows VM for image preparation"
+    - az vm create --resource-group $RESOURCE_GROUP --name $VM_NAME \
+        --image Win2019Datacenter --admin-username azureuser --admin-password "<Windows_VM_Password>"
+
+configure:
+  stage: configure
+  script:
+    - echo "Running Ansible playbook to configure Windows VM"
+    - ansible-playbook -i inventory.yml playbook.yml
+
+capture-image:
+  stage: capture-image
+  script:
+    - echo "Stopping VM before capturing image"
+    - az vm deallocate --resource-group $RESOURCE_GROUP --name $VM_NAME
+    - az vm generalize --resource-group $RESOURCE_GROUP --name $VM_NAME
+
+    - echo "Capturing image from VM"
+    - az image create --resource-group $RESOURCE_GROUP --name $IMAGE_NAME \
+        --source $VM_NAME
+
+    - echo "Image creation completed successfully"

@@ -1,0 +1,52 @@
+variables:
+  AZURE_REGION: "eastus"
+  ACGNAME: $ACGNAAME
+  VM_NAME: $VM_NAME
+  IMAGE_NAME: $IMAGE_NAME
+  VERSION: $VERSION
+  AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID
+  AZURE_TENANT_ID: $AZURE_TENANT_ID
+  AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
+  AZURE_CLIENT_ID: $AZURE_CLIENT_ID
+  IMAGE_TEMPLATE_PATH: $IMAGE_TEMPLATE_PATH
+  TEMPLATE_NAME: $TEMPLATE_NAME
+  RESOURCEGROUP: $RESOURCEGROUP
+  IMAGEDEFNAME: $IMAGEDEFNAME
+
+image: mcr.microsoft.com/azure-cli
+
+stages:
+  - build-image
+
+build-image:
+  stage: build-image
+  script:
+    - echo "Logging in to Azure"
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az account set --subscription $AZURE_SUBSCRIPTION_ID
+
+    - echo "Submitting image template to Azure Image Builder"
+    - az resource create --resource-group $RESOURCEGROUP \
+        --properties @$IMAGE_TEMPLATE_PATH \
+        --resource-type Microsoft.VirtualMachineImages/imageTemplates
+
+    - echo "Starting image build"
+    - az resource invoke-action --resource-group $RESOURCEGROUP \
+        --name $TEMPLATE_NAME \
+        --action Run \
+        --resource-type Microsoft.VirtualMachineImages/imageTemplates
+
+    - echo "Image build initiated successfully"
+test-image:
+  stage: test-image
+  script:
+    - echo "Deploying VM from the new image for testing"
+    - az vm create --resource-group $RESOURCEGROUP \
+        --name TestVM \
+        --image "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RESOURCEGROUP/providers/Microsoft.Compute/galleries/$ACGNAAME/images/$IMAGEDEFNAME/versions/$VERSION" \
+        --admin-username azureuser --generate-ssh-keys
+
+    - echo "Running tests"
+    - # Insert custom commands or scripts here to validate the image configuration
+
+    - echo "Tests completed"

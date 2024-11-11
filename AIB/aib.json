@@ -1,0 +1,29 @@
+{
+  "location": "eastus",
+  "properties": {
+    "source": {
+      "type": "PlatformImage",
+      "publisher": "MicrosoftWindowsServer",
+      "offer": "WindowsServer",
+      "sku": "2019-Datacenter"
+    },
+    "customize": [
+      {
+        "type": "PowerShell",
+        "name": "Install IIS",
+        "scriptUri": "https://path-to-your-script/iis-install.ps1"
+      }
+    ],
+    "distribute": [
+      {
+        "type": "SharedImage",
+        "galleryImageId": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Compute/galleries/<gallery-name>/images/<image-definition-name>",
+        "runOutputName": "myImage",
+        "artifactTags": {
+          "source": "GitLab",
+          "baseosimg": "Windows2019"
+        }
+      }
+    ]
+  }
+}

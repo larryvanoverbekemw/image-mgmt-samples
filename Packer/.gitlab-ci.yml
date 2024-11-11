@@ -1,0 +1,28 @@
+## Need to have the following variables defined in Gitlab CI/CD
+#   client_id       = "{{env `AZURE_CLIENT_ID`}}"
+#  client_secret   = "{{env `AZURE_CLIENT_SECRET`}}"
+#  subscription_id = "{{env `AZURE_SUBSCRIPTION_ID`}}"
+#  tenant_id       = "{{env `AZURE_TENANT_ID`}}"
+#  resource_group_name = "{{env `RESOURCE_GROUP`}}"
+
+image: hashicorp/packer:latest
+
+stages:
+  - build
+
+variables:
+  PACKER_LOG: 1
+  PACKER_LOG_PATH: "./packer.log"
+
+
+build-image:
+  stage: build
+  script:
+    - echo "Logging into Azure"
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az account set --subscription $AZURE_SUBSCRIPTION_ID
+
+    - echo "Running Packer build"
+    - packer init .
+    - packer validate windows-image.pkr.hcl
+    - packer build windows-image.pkr.hcl
